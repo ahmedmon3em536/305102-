@@ -1,0 +1,105 @@
+<script>
+    const pollutionValEl = document.getElementById('pollution-value');
+    const progressBar = document.getElementById('progress-bar');
+    const warningCard = document.getElementById('warning-card');
+    const warningText = document.getElementById('warning-text');
+    const actionText = document.getElementById('action-text');
+    const warningIcon = document.getElementById('warning-icon');
+    
+    let history = [];
+    let alerts = 0;
+    let currentSimulatedValue = 25; // Starting point
+    const ctx = document.getElementById('pollutionChart').getContext('2d');
+
+    // Initialize Chart.js
+    const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: Array(20).fill(''),
+            datasets: [{
+                label: 'Pollution %',
+                data: [],
+                borderColor: '#38bdf8',
+                backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                fill: true,
+                tension: 0.4,
+                pointRadius: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { 
+                y: { min: 0, max: 100, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }, 
+                x: { display: false } 
+            },
+            plugins: { legend: { display: false } },
+            animation: { duration: 1000 }
+        }
+    });
+
+    function updateDashboard() {
+        // --- SIMULATION LOGIC ---
+        // We create a small random change (-5 to +5) to make it look like a real sensor drifting
+        let change = (Math.random() * 10) - 5; 
+        currentSimulatedValue += change;
+
+        // Keep value between 0 and 100
+        if (currentSimulatedValue > 100) currentSimulatedValue = 100;
+        if (currentSimulatedValue < 0) currentSimulatedValue = 0;
+        
+        const value = Math.round(currentSimulatedValue);
+        // -------------------------
+
+        // Update Text and Progress Bar
+        pollutionValEl.innerText = value + '%';
+        progressBar.style.width = value + '%';
+
+        // Warning Logic
+        if (value > 70) {
+            // DANGER ZONE
+            warningCard.className = "bg-red-900/40 p-6 rounded-2xl shadow-xl border border-red-500 pulse-red flex flex-col justify-center items-center text-center";
+            warningText.innerText = "WARNING: HIGH POLLUTION";
+            warningText.className = "text-xl font-bold text-red-400";
+            actionText.innerText = "Please wear a mask immediately!";
+            actionText.className = "text-red-200 mt-2";
+            warningIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>';
+            if (history[history.length - 1] <= 70) alerts++; // Only count new alerts
+        } else if (value > 40) {
+            // MODERATE ZONE
+            warningCard.className = "bg-slate-800 p-6 rounded-2xl shadow-xl border border-orange-500 flex flex-col justify-center items-center text-center";
+            warningText.innerText = "Air Quality: Moderate";
+            warningText.className = "text-xl font-bold text-orange-400";
+            actionText.innerText = "Consider a mask if sensitive.";
+            actionText.className = "text-slate-400 mt-2";
+            warningIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
+        } else {
+            // SAFE ZONE
+            warningCard.className = "bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-700 flex flex-col justify-center items-center text-center";
+            warningText.innerText = "Air Quality: Good";
+            warningText.className = "text-xl font-bold text-green-400";
+            actionText.innerText = "No mask required.";
+            actionText.className = "text-slate-500 mt-2";
+            warningIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
+        }
+
+        // Color transitions for the progress bar
+        progressBar.className = value > 70 ? "h-full bg-red-500 transition-all duration-500" : (value > 40 ? "h-full bg-orange-500 transition-all duration-500" : "h-full bg-green-500 transition-all duration-500");
+
+        // Update Chart
+        history.push(value);
+        if (history.length > 20) history.shift();
+        chart.data.datasets[0].data = history;
+        chart.update();
+
+        // Update Stats
+        document.getElementById('max-val').innerText = Math.max(...history) + '%';
+        document.getElementById('avg-val').innerText = Math.round(history.reduce((a,b) => a+b, 0) / history.length) + '%';
+        document.getElementById('alert-count').innerText = alerts;
+    }
+
+    // Run every 2 seconds
+    setInterval(updateDashboard, 2000);
+    // Initial call to prevent 0% on load
+    updateDashboard();
+</script>
